@@ -11,6 +11,7 @@ on:
       - rust-toolchain.toml
       - rust/**
       - python/**
+      - nodejs/**
       - .github/workflows/freebsd.yml
 
 concurrency:
@@ -78,3 +79,30 @@ jobs:
             pip install pytest pyarrow numpy pydantic deprecation packaging tqdm lance-namespace
             python -c "import lancedb; print('lancedb imported successfully')"
             pytest -x -m "not slow and not s3_test" python/tests
+
+  nodejs:
+    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Build and test Node.js bindings on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.2"
+          usesh: true
+          prepare: |
+            pkg install -y curl protobuf pkgconf openssl ca_root_nss cmake llvm node20 npm-node20
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
+          run: |
+            . "$HOME/.cargo/env"
+            export CC=clang
+            export CXX=clang++
+            export SSL_CERT_FILE=/usr/local/share/certs/ca-root-nss.crt
+            cd nodejs
+            npm ci --include=optional
+            npm run build:debug -- --profile ci
+            npm run tsc
+            npm run test
