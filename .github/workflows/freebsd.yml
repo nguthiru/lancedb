@@ -60,9 +60,11 @@ jobs:
 
             echo "=== Node.js bindings ==="
             cd nodejs
-            npm ci --include=optional
+            npm ci
             npm run build:debug -- --profile ci --features aws-lc-sys/bindgen
-            npm run tsc
+            # Skip tsc: @huggingface/transformers can't install on FreeBSD
+            # (onnxruntime-node has no FreeBSD binary). Type checking is
+            # covered by Linux/macOS CI. Tests use ts-jest so tsc isn't needed.
             npm run test
             cd ..
 
