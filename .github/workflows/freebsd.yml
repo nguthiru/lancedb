@@ -1,0 +1,46 @@
+name: FreeBSD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - rust/**
+      - .github/workflows/freebsd.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  freebsd:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Build and test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.2"
+          usesh: true
+          prepare: |
+            pkg install -y curl protobuf pkgconf openssl cmake llvm
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
+          run: |
+            . "$HOME/.cargo/env"
+            export CC=clang
+            export CXX=clang++
+            cd rust/lancedb
+            cargo build --profile ci --features remote --tests --locked
+            cargo test --profile ci --features remote --locked
