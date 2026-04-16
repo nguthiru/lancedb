@@ -94,15 +94,16 @@ jobs:
           release: "14.2"
           usesh: true
           prepare: |
-            pkg install -y curl protobuf pkgconf openssl ca_root_nss cmake llvm node20 npm-node20
+            pkg install -y curl protobuf pkgconf openssl ca_root_nss cmake llvm perl5 node20 npm-node20
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
           run: |
             . "$HOME/.cargo/env"
             export CC=clang
             export CXX=clang++
             export SSL_CERT_FILE=/usr/local/share/certs/ca-root-nss.crt
+            export AWS_LC_SYS_CMAKE_BUILDER=1
             cd nodejs
             npm ci --include=optional
-            npm run build:debug -- --profile ci
+            npm run build:debug -- --profile ci --features aws-lc-sys/bindgen
             npm run tsc
             npm run test
