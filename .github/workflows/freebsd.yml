@@ -35,13 +35,13 @@ jobs:
           release: "14.2"
           usesh: true
           prepare: |
-            pkg install -y curl git protobuf pkgconf openssl ca_root_nss cmake llvm
+            pkg install -y curl protobuf pkgconf openssl ca_root_nss cmake llvm
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
           run: |
             . "$HOME/.cargo/env"
             export CC=clang
             export CXX=clang++
-            export CARGO_NET_GIT_FETCH_WITH_CLI=true
+            export SSL_CERT_FILE=/usr/local/share/certs/ca-root-nss.crt
             cd rust/lancedb
             cargo build --profile ci --features remote --tests --locked
             cargo test --profile ci --features remote --locked
