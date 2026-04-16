@@ -58,19 +58,19 @@ jobs:
             cargo test --profile ci --features remote --locked
             cd ../..
 
-            echo "=== Python bindings ==="
-            cd python
-            pip install maturin
-            maturin build --profile ci
-            pip install target/wheels/*.whl
-            pip install pytest pyarrow numpy pydantic deprecation packaging tqdm lance-namespace
-            python -c "import lancedb; print('lancedb imported successfully')"
-            pytest -x -m "not slow and not s3_test" python/tests
-            cd ..
-
             echo "=== Node.js bindings ==="
             cd nodejs
             npm ci --include=optional
             npm run build:debug -- --profile ci --features aws-lc-sys/bindgen
             npm run tsc
             npm run test
+            cd ..
+
+            echo "=== Python bindings ==="
+            cd python
+            pip install maturin
+            maturin build --profile ci
+            pip install ../target/wheels/*.whl
+            pip install pytest pyarrow numpy pydantic deprecation packaging tqdm lance-namespace
+            python -c "import lancedb; print('lancedb imported successfully')"
+            pytest -x -m "not slow and not s3_test" python/tests
