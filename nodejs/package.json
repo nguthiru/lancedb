@@ -29,7 +29,8 @@
       "x86_64-unknown-linux-musl",
       "aarch64-unknown-linux-musl",
       "x86_64-pc-windows-msvc",
-      "aarch64-pc-windows-msvc"
+      "aarch64-pc-windows-msvc",
+      "x86_64-unknown-freebsd"
     ]
   },
   "license": "Apache-2.0",
@@ -69,7 +70,7 @@
     "node": ">= 18"
   },
   "cpu": ["x64", "arm64"],
-  "os": ["darwin", "linux", "win32"],
+  "os": ["darwin", "linux", "win32", "freebsd"],
   "scripts": {
     "artifacts": "napi artifacts",
     "build:debug": "napi build --platform --dts ../lancedb/native.d.ts --js ../lancedb/native.js --output-dir lancedb",

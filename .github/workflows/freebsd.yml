@@ -1,0 +1,80 @@
+name: FreeBSD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - rust/**
+      - python/**
+      - nodejs/**
+      - .github/workflows/freebsd.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  freebsd:
+    timeout-minutes: 120
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Build and test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.2"
+          usesh: true
+          prepare: |
+            pkg install -y curl protobuf pkgconf openssl ca_root_nss cmake llvm perl5 \
+              py311-pip py311-sqlite3 python311 \
+              node20 npm-node20 \
+              apache-arrow
+            ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3
+            ln -sf /usr/local/bin/python3.11 /usr/local/bin/python
+            ln -sf /usr/local/bin/pip-3.11 /usr/local/bin/pip
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
+          run: |
+            set -e
+            . "$HOME/.cargo/env"
+            export CC=clang
+            export CXX=clang++
+            export SSL_CERT_FILE=/usr/local/share/certs/ca-root-nss.crt
+            export AWS_LC_SYS_CMAKE_BUILDER=1
+
+            echo "=== Rust core ==="
+            cd rust/lancedb
+            cargo build --profile ci --features remote --tests --locked
+            cargo test --profile ci --features remote --locked
+            cd ../..
+
+            echo "=== Node.js bindings ==="
+            cd nodejs
+            npm ci
+            npm run build:debug -- --profile ci --features aws-lc-sys/bindgen
+            # Skip tsc: @huggingface/transformers can't install on FreeBSD
+            # (onnxruntime-node has no FreeBSD binary). Type checking is
+            # covered by Linux/macOS CI. Tests use ts-jest so tsc isn't needed.
+            npm run test
+            cd ..
+
+            echo "=== Python bindings ==="
+            cd python
+            # Build pyarrow from source against system Arrow C++ libs
+            export PYARROW_WITH_PARQUET=1
+            export PYARROW_WITH_DATASET=1
+            export PYARROW_CMAKE_OPTIONS="-DCMAKE_PREFIX_PATH=/usr/local"
+            pip install --no-binary pyarrow -e ".[tests]"
+            python -c "import lancedb; print('lancedb imported successfully')"
+            pytest -x -m "not slow and not s3_test" python/tests
